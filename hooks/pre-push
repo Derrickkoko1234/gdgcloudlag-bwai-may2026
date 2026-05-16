@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# ══════════════════════════════════════════════════════════════════════════════
+# Git pre-push hook — runs AI audit before every push
+# ══════════════════════════════════════════════════════════════════════════════
+# Install:
+#   cp hooks/pre-push .git/hooks/pre-push
+#   chmod +x .git/hooks/pre-push
+#
+# Or use the setup script:
+#   ./scripts/setup-hooks.sh
+# ══════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "Running AI audit before push..."
+echo ""
+
+# Run audit in pre-push mode (saves report, exits 1 on critical findings)
+if ! ./audit.sh --pre-push; then
+  echo ""
+  echo "Push aborted. Fix the critical findings above."
+  echo "To skip this check (not recommended): git push --no-verify"
+  exit 1
+fi
+
+exit 0
