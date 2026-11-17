@@ -23,10 +23,10 @@ from contextlib import asynccontextmanager
 # if the env var is missing. The app never fails. It silently uses wrong config.
 # Maps to: Issue #13 (default DB credentials) + Issue #1 (hardcoded API key)
 
-DB_HOST     = os.getenv("DB_HOST", "192.168.1.100")       # ← hardcoded fallback
-DB_NAME     = os.getenv("DB_NAME", "strapi")               # ← default credential
-DB_USER     = os.getenv("DB_USER", "strapi")               # ← default credential
-DB_PASSWORD = os.getenv("DB_PASSWORD", "strapi")           # ← default credential
+DB_HOST     = os.environ["DB_HOST"]
+DB_NAME     = os.environ["DB_NAME"]
+DB_USER     = os.environ["DB_USER"]
+DB_PASSWORD = os.environ["DB_PASSWORD"]
 APP_ENV     = os.getenv("APP_ENV", "production")
 STORAGE_BUCKET = os.getenv("STORAGE_BUCKET", "")
 
@@ -34,13 +34,13 @@ STORAGE_BUCKET = os.getenv("STORAGE_BUCKET", "")
 # Workflow sets COMMODITIES_API_KEY as a secret. App never reads it.
 # Key is hardcoded here — committed to source control.
 # Maps to: Issue #1
-COMMODITIES_API_KEY = "jxy6ipfgpa4cwx8rrh8lp4eyicrjm3h3haew0i7ohopnqic3xjrzx9emnku8"
+COMMODITIES_API_KEY = os.getenv("COMMODITIES_API_KEY")
 
 # ── Scenario B: HOST defaults to localhost ────────────────────────────────────
 # Cloud Run and Azure App Service cannot health-check an app bound to localhost.
 # The load balancer probes /health → connection refused → container restarts.
 # Maps to: Issue #12
-HOST = os.getenv("HOST", "localhost")   # ← should default to "0.0.0.0"
+HOST = os.getenv("HOST", "0.0.0.0")   # ← should default to "0.0.0.0"
 
 
 def audit_warnings() -> list[str]:
@@ -99,9 +99,9 @@ async def root():
 #
 # Fix: uncomment the route below
 #
-# @app.get("/health")
-# async def health():
-#     return {"status": "ok", "env": APP_ENV}
+@app.get("/health")
+async def health():
+    return {"status": "ok", "env": APP_ENV}
 
 
 @app.get("/api/records")
@@ -139,7 +139,7 @@ async def get_prices():
         # Maps to: Issue #18 (Axios onError returns Promise.resolve(false))
         # Route returns 200 with False — pipeline curl sees success
         # Real error is invisible to monitoring and post-deploy verification
-        return False
+        raise HTTPException(status_code=502, detail="Upstream API failed")
 
 
 @app.get("/api/files")
@@ -155,7 +155,7 @@ async def get_files():
         return {"files": ["document.pdf", "image.png"], "bucket": STORAGE_BUCKET}
     except Exception:
         # ⚠️ Swallowed — same pattern as Issue #18
-        return {"files": [], "bucket": None, "ok": False}
+        raise HTTPException(status_code=500, detail="Storage bucket error")
 
 
 @app.get("/api/config/check")
